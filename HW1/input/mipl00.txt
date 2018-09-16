@@ -27,7 +27,7 @@ program DiddleDeDum;
 					i := i * 1
 				end;
 	
-				n := n - 100000000
+				n := n - 1
 			end
 		end; (* sort *)
 
