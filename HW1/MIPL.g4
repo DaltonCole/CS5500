@@ -185,12 +185,12 @@ n_write         : T_WRITE T_LPAREN n_output n_outputlst T_RPAREN {\
  *	Lexer Rules
  */
 
-T_COMMENT 		: '(*' .*? '*)' -> skip ; /* MIGHT BE BAD */
+T_COMMENT 		: '(*' .*? '*)' -> skip ;
 T_WRITE 		: 'write' ;
 T_PLUS 			: '+' ;
 T_MINUS 		: '-' ;
 T_OR 			: 'or' ;
-T_ARRAY 		: 'array' ;/* {print(getText())} ; */
+T_ARRAY 		: 'array' ;
 T_LBRACK 		: '[' ;
 T_RBRACK 		: ']' ;
 T_OF 			: 'of' ;

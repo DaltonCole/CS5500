@@ -12,13 +12,16 @@ class MyErrorListener( ErrorListener ):
 
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
         print("Line " + str(line) + ": syntax error")
-        print(recognizer)
-        print(offendingSymbol)
-        print(line)
-        print(column)
-        print(msg)
-        print(e)
+        if '\'\'\'\'' in str(offendingSymbol):
+            print("**** Invalid character constant: \'\'")
+        elif '\'\'\'' in str(offendingSymbol):
+            print("**** Invalid character constant: \'")
+        else:
+            number = str(offendingSymbol).split('\'')[1]
+            if number.isdigit():
+                print("**** Invalid integer constant: " + str(number))
         sys.exit(1)
+
 
 def main(argv):
     input = FileStream(argv[1])
@@ -26,41 +29,7 @@ def main(argv):
     stream = CommonTokenStream(lexer)
     parser = MIPLParser(stream)
     parser._listeners = [MyErrorListener()]
-    ParseTree = parser.n_start()
-
-    """
-    printer = MIPLListener()
-    walker = ParseTreeWalker()
-    walker.walk(printer, tree)
-    """
-
-    #output = open("output.html","w")
-    
-    #output.close()      
+    ParseTree = parser.n_start()      
 
 if __name__ == '__main__':
     main(sys.argv)
-
-"""
-if __name__ == "__main__":
-    inputStream = StdinStream( )
-    lexer = AlmostEmptyLexer(inputStream)
-    # Add your error listener to the lexer if required
-    #lexer.removeErrorListeners()
-    #lexer._listeners = [ MyErrorListener() ]
-    stream = CommonTokenStream(lexer)
-    parser = AlmostEmptyParser(stream)
-    parser._listeners = [ MyErrorListener() ]
-    tree = parser.animals()
-"""
-'''
-def main():
-    lexer = HelloLexer(StdinStream())
-    stream = CommonTokenStream(lexer)
-    parser = HelloParser(stream)
-    tree = parser.hi()
-    printer = HelloPrintListener()
-    walker = ParseTreeWalker()
-    walker.walk(printer, tree)
-'''
-
