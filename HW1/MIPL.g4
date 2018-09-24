@@ -230,13 +230,8 @@ T_VAR 			: 'var' ;
 T_WHILE 		: 'while' ;
 
 T_INTCONST 		: VALIDINT ;
-/* MAYBEINT 		: T_UNKNOWN | T_INTCONST ; */
-/* INVALINT 		: T_UNKNOWN ; */
-/* IDENT 			: T_IDENT ; */
-/* BADCHARCONST 	: T_UNKNOWN ; */
-/* CHARCONST 		: T_CHARCONST ; */
-T_IDENT 			: IDENT ;
-T_CHARCONST 		: CHARCONST ;
+T_IDENT 		: IDENT ;
+T_CHARCONST 	: CHARCONST ;
 
 QUOTE			: '\'' ;
 UNDERSCORE		: '_' ;

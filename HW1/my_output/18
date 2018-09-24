@@ -1,0 +1,3 @@
+TOKEN: T_PROG	LEXEME: T_PROG
+N_PROGLBL -> T_PROG 
+Line 5: syntax error

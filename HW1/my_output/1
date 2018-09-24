@@ -1,0 +1,10 @@
+TOKEN: T_PROG	LEXEME: T_PROG
+N_PROGLBL -> T_PROG 
+N_VARDECPART -> N_epsilon 
+N_PROCDECPART -> N_epsilon 
+TOKEN: T_IDENT	LEXEME: x
+N_VARIDENT -> T_IDENT 
+N_ENTIREVAR -> N_VARIDENT 
+N_VARIABLE -> N_ENTIREVAR 
+Line 7: syntax error
+**** Invalid integer constant: 1234567890123
