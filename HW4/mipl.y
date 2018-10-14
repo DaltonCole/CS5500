@@ -68,6 +68,8 @@ stack<Quad> goto_label_stack;
 queue<Quad> goto_queue;
 // GOTO queue for "goto Lx" (if)
 queue<Quad> goto_label_queue;
+// Keep track of last array for recursive [][]...
+map<char, Quad> recursive_array_last_t;
 
 // Requires previous temp
 bool temp1 = false;
@@ -107,8 +109,8 @@ extern "C"
 %token  T_INTCONST T_IDENT T_UNKNOWN
 
 %type <num> T_INTCONST
-%type <ch> T_IDENT 
-%type <text> E L B R
+%type <ch> T_IDENT L
+%type <text> E B R
 
 /*
  *	Starting point.
@@ -153,7 +155,6 @@ N	: T_LBRACK T_INTCONST T_RBRACK N
 C	: S T_SEMICOL C
 	{
 		prRule("C", "S ; C");
-		
 	}
 	| /* epsilon */
 	{
@@ -353,11 +354,12 @@ L	: T_IDENT T_LBRACK E T_RBRACK
 		q.add_temp_result();
 		instructions.push_back(q);
 
-		string hacker(1, $1);
-		$$ = new char(hacker.length() + 1);
-		strcpy($$, hacker.c_str());
+		$$ = $1;
 
 		current_inst.add_arg(q.get_temp_result()); // arg1
+
+		// Keep track of tx for recursive call
+		recursive_array_last_t[$1] = q;
 
 		if (DEBUG) 
 		{
@@ -372,7 +374,7 @@ L	: T_IDENT T_LBRACK E T_RBRACK
 	  	}
 	}
 	| L T_LBRACK E T_RBRACK // Recursive
-	{
+	{		
 		prRule("L", "L [ E ]");
 		string temp = string($3); // Quad q clears $3 ???
 		depth++;
@@ -392,8 +394,8 @@ L	: T_IDENT T_LBRACK E T_RBRACK
 		// Add last two temp values to instructions
 		Quad p_q;
 		p_q.op = "+";
-		// Add temp value from two instructions ago
-		p_q.add_arg(instructions[instructions.size() - 2].get_temp_result());
+		// Add temp value from last []
+		p_q.add_arg(recursive_array_last_t[$1].get_temp_result());
 		// Add temp value from last instruction
 		p_q.add_arg(instructions.back().get_temp_result());
 		p_q.add_temp_result();
@@ -402,6 +404,9 @@ L	: T_IDENT T_LBRACK E T_RBRACK
 		$$ = $1;
 		current_inst.remove_arg();
 		current_inst.add_arg(p_q.get_temp_result()); // arg1
+
+		// Keep track of tx for recursive call
+		recursive_array_last_t[$1] = p_q;
 	}
 	;
 B	: E R E
