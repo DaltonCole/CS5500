@@ -26,6 +26,7 @@
 #include <map>
 #include <cstring>
 #include <stack>
+#include <queue>
 #include "quad.h"
 using namespace std;
 
@@ -59,10 +60,14 @@ Quad current_inst;
 int depth;
 // Keeps track of array size for L -> L[e]
 SUBSCRIPT_INFO array_size;
-// GOTO stack for "Lx:""
+// GOTO stack for "Lx:" (while)
 stack<Quad> goto_stack;
-// GOTO stack for "goto Lx"
+// GOTO stack for "goto Lx" (while)
 stack<Quad> goto_label_stack;
+// GOTO queue for "Lx:" (if)
+queue<Quad> goto_queue;
+// GOTO queue for "goto Lx" (if)
+queue<Quad> goto_label_queue;
 
 // Requires previous temp
 bool temp1 = false;
@@ -145,10 +150,7 @@ N	: T_LBRACK T_INTCONST T_RBRACK N
 	prRule("N", "epsilon");
 	}
 	;
-C	: S T_SEMICOL
-	{
-		
-	} C
+C	: S T_SEMICOL C
 	{
 		prRule("C", "S ; C");
 		
@@ -206,9 +208,46 @@ A	: T_IDENT T_ASSIGN E // id = EXPR
 		current_inst.add_arg($3); // arg2
 	}
 	;
-F	: T_IF T_LPAREN B T_RPAREN T_THEN S T_ELSE S
+F	: T_IF T_LPAREN B T_RPAREN 
 	{
-	prRule("F", "if ( B ) then S else S");
+		string still_clears = $3;
+		// Add if goto
+		Quad q;
+		q.add_label_result(); // Updates op with ":"
+		q.op = "if_goto";
+		q.add_arg(still_clears);
+		instructions.push_back(q);
+
+		// Add "Lx:" to queue
+		q.op = ":";
+		goto_queue.push(q);
+
+		// Add "L(x+1):" to queue
+		q.add_label_result();
+		goto_queue.push(q);
+
+		// Add "goto L(x+1)" to queue
+		q.op = "goto";
+		goto_label_queue.push(q);
+	} T_THEN S 
+	{
+		Quad q;
+		// Add goto L(x+1)
+		q = goto_label_queue.front();
+		goto_label_queue.pop();
+		instructions.push_back(q);
+		// Add Lx:
+		q = goto_queue.front();
+		goto_queue.pop();
+		instructions.push_back(q);
+	} T_ELSE S
+	{
+		prRule("F", "if ( B ) then S else S");
+		// Add L(x+1):
+		Quad q;
+		q = goto_queue.front();
+		goto_queue.pop();
+		instructions.push_back(q);
 	}
 	; 
 W	: T_WHILE 
