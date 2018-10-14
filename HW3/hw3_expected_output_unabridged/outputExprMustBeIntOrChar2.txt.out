@@ -1,0 +1,26 @@
+TOKEN: T_PROG           LEXEME: program
+N_PROGLBL -> T_PROG
+
+___Entering new scope...
+
+TOKEN: T_IDENT          LEXEME: p
+TOKEN: T_SCOLON         LEXEME: ;
+N_PROG -> N_PROGLBL T_IDENT T_SCOLON N_BLOCK T_DOT
+___Adding p to symbol table with type PROGRAM
+TOKEN: T_BEGIN          LEXEME: begin
+N_VARDECPART -> epsilon
+N_PROCDECPART -> epsilon
+TOKEN: T_WRITE          LEXEME: write
+TOKEN: T_LPAREN         LEXEME: (
+TOKEN: T_TRUE           LEXEME: true
+N_BOOLCONST -> T_TRUE
+N_CONST -> N_BOOLCONST
+N_FACTOR -> N_CONST
+TOKEN: T_RPAREN         LEXEME: )
+N_MULTOPLST -> epsilon
+N_TERM -> N_FACTOR N_MULTOPLST
+N_ADDOPLST -> epsilon
+N_SIMPLEEXPR -> N_TERM N_ADDOPLST
+N_EXPR -> N_SIMPLEEXPR
+N_OUTPUT -> N_EXPR
+Line 8: Output expression must be of type integer or char

@@ -1,0 +1,39 @@
+TOKEN: T_PROG           LEXEME: program
+N_PROGLBL -> T_PROG
+
+___Entering new scope...
+
+TOKEN: T_IDENT          LEXEME: p
+TOKEN: T_SCOLON         LEXEME: ;
+N_PROG -> N_PROGLBL T_IDENT T_SCOLON N_BLOCK T_DOT
+___Adding p to symbol table with type PROGRAM
+TOKEN: T_VAR            LEXEME: var
+TOKEN: T_IDENT          LEXEME: i
+N_IDENT -> T_IDENT
+TOKEN: T_COLON          LEXEME: :
+N_IDENTLST -> epsilon
+TOKEN: T_INT            LEXEME: integer
+N_SIMPLE -> T_INT
+N_TYPE -> N_SIMPLE
+N_VARDEC -> N_IDENT N_IDENTLST T_COLON N_TYPE
+___Adding i to symbol table with type INTEGER
+TOKEN: T_SCOLON         LEXEME: ;
+TOKEN: T_BEGIN          LEXEME: begin
+N_VARDECLST -> epsilon
+N_VARDECPART -> T_VAR N_VARDEC T_SCOLON N_VARDECLST
+N_PROCDECPART -> epsilon
+TOKEN: T_WHILE          LEXEME: while
+TOKEN: T_IDENT          LEXEME: i
+N_SIGN -> epsilon
+N_VARIDENT -> T_IDENT
+N_ENTIREVAR -> N_VARIDENT
+TOKEN: T_DO             LEXEME: do
+N_VARIABLE -> N_ENTIREVAR
+N_FACTOR -> N_SIGN N_VARIABLE
+N_MULTOPLST -> epsilon
+N_TERM -> N_FACTOR N_MULTOPLST
+N_ADDOPLST -> epsilon
+N_SIMPLEEXPR -> N_TERM N_ADDOPLST
+N_EXPR -> N_SIMPLEEXPR
+N_WHILE -> T_WHILE N_EXPR T_DO N_STMT
+Line 10: Expression must be of type boolean
