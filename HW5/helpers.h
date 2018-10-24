@@ -1,9 +1,21 @@
+// Dalton Cole
+
 #ifndef HELPER_H
 #define HELPER_H
 
 #include "quad.h"
 #include "graph.h"
 #include <map>
+#include <algorithm>
+using namespace std;
+
+vector<vector<Quad> > make_blocks(const vector<Quad>& instructions);
+void print_blocks(const vector<vector<Quad> >& blocks);
+void optimize_blocks(vector<vector<Quad> >& blocks);
+bool check_equality(const vector<Quad>& x, const vector<Quad>& y);
+vector<Quad> optimize_block(vector<Quad>& block);
+void constant_folding(vector<Quad>& block);
+
 
 vector<vector<Quad> > make_blocks(const vector<Quad>& instructions) {
 	// List of blocks
@@ -40,30 +52,48 @@ void print_blocks(const vector<vector<Quad> >& blocks) {
 			blocks[i][j].print();
 			count++;
 		}
-		cout << endl;
 	}
 }
 
 void optimize_blocks(vector<vector<Quad> >& blocks) {
+	// For each block
 	for(int i = 0; i < blocks.size(); i++) {
 		vector<Quad> pre_opti;
 		vector<Quad> post_opti = blocks[i];
+		// Do until pre and post are equal
 		do {
-			pre_opti = post_opti; // Could use move if this is slow
-			post_opti = optimize_block(blocks[i]);
-		} while(pre_opti != post_opti);
+			swap(pre_opti, post_opti);
+			post_opti = optimize_block(pre_opti);
+		} while(!check_equality(pre_opti, post_opti));
 		blocks[i] = post_opti;
 	}
 }
 
-vector<Quad> optimize_block(vector<Quad>& block) {
-	// --- Make graph --- //
-	map<
+bool check_equality(const vector<Quad>& x, const vector<Quad>& y) {
+	if(x.size() != y.size()) {
+		return false;
+	}
 
+	for(int i = 0; i < x.size(); i++) {
+		if(x[i] != y[i]) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
-void constant_folding(vector<Quad>& block) {
+vector<Quad> optimize_block(vector<Quad>& block) {
+	// --- Make graph --- //
+	Graph g(block);
 
+	// Optimize
+	g.constant_folding();
+	g.algebraic_simp();
+	g.common_subexpression_elimination();
+	g.dead_code();
+
+	return g.graph_to_block();
 }
 
 #endif

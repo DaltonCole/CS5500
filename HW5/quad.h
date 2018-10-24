@@ -1,3 +1,5 @@
+// Dalton Cole
+
 #ifndef QUAD_H
 #define QUAD_H
 
@@ -20,9 +22,9 @@ struct Quad {
 			op == ">=" || op == "!=" || op == "==") {
 			cout << result << " = " << arg1 << " " << op << " " << arg2; 
 		} else if(op == "[]") { // Print array
-			cout << result[0] << "[" << arg1 << "] = " << arg2;
+			cout << result << "[" << arg1 << "] = " << arg2;
 		} else if(op == "rhs[]") { // Print rhs array
-			cout << result << " = " << arg1[0] << "[" << arg2 << "]";
+			cout << result << " = " << arg1 << "[" << arg2 << "]";
 		} else if(op == ":") { // Label
 			cout << result << ":";
 		} else if(op == "if_goto") { // if goto
@@ -35,6 +37,17 @@ struct Quad {
 		cout << endl;
 
 		return;
+	}
+
+	bool operator ==(const Quad& rhs) const {
+		if(op == rhs.op && arg1 == rhs.arg1 && arg2 == rhs.arg2 && result == rhs.result) {
+			return true;
+		}
+		return false;
+	}
+
+	bool operator !=(const Quad& rhs) const {
+		return !(*this == rhs);
 	}
 
 	void clear() {

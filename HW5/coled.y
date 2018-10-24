@@ -32,6 +32,8 @@
 #include "helpers.h"
 using namespace std;
 
+#define int_word_size 1
+
 
 int lineNum = 1; 
 
@@ -338,7 +340,7 @@ L	: T_IDENT T_LBRACK E T_RBRACK
 		SUBSCRIPT_INFO s = findEntryInSymbolTable($1);
 		array_size = s; // Keep track of array size for recursive L
 		string temp = string($3); // Quad q clears $3 ???
-		int row_col_count = 4;
+		int row_col_count = int_word_size;
 		depth = 1; // Set recursive index depth
 
 		for(int i = depth; i < array_size.size(); i++) {
@@ -376,7 +378,7 @@ L	: T_IDENT T_LBRACK E T_RBRACK
 		prRule("L", "L [ E ]");
 		string temp = string($3); // Quad q clears $3 ???
 		depth++;
-		int row_col_count = 4;
+		int row_col_count = int_word_size;
 
 		for(int i = depth; i < array_size.size(); i++) {
 			row_col_count *= array_size[i];
@@ -542,6 +544,8 @@ int main( )
   } while (!feof(yyin));
 
   vector<vector<Quad> > blocks = make_blocks(instructions);
+
+  optimize_blocks(blocks);
 
   // Output list of 3-address instructions
   print_blocks(blocks);
