@@ -173,17 +173,17 @@ N_ARRAY         : T_ARRAY T_LBRACK N_IDXRANGE T_RBRACK T_OF
 N_ARRAYVAR      : N_ENTIREVAR
 					{
 					prRule("N_ARRAYVAR", "N_ENTIREVAR");
-				$$.type = $1.type; 
-					$$.startIndex = $1.startIndex;
-					$$.endIndex = $1.endIndex;
-				 $$.baseType = $1.baseType;
+						$$.type = $1.type; 
+						$$.startIndex = $1.startIndex;
+						$$.endIndex = $1.endIndex;
+						$$.baseType = $1.baseType;
 					}
 				;
 N_ASSIGN        : N_VARIABLE {
 					assigned_variable = temp;
 
 					// Set assign oal
-					oal.push_back(Instruction("la", oal.find_var(assigned_variable)));
+					//oal.push_back(Instruction("la", oal.find_var(assigned_variable)));
 				} T_ASSIGN N_EXPR
 					{
 					prRule("N_ASSIGN", 
@@ -222,6 +222,9 @@ N_ASSIGN        : N_VARIABLE {
 						}
 
 						
+						if(oal.last_inst("la")) {
+							oal.push_back(Instruction("deref"));
+						}
 						/*
 						// If constant, push const
 						if(is_var == false) {
@@ -343,10 +346,10 @@ N_CONST         : N_INTCONST
 N_ENTIREVAR     : N_VARIDENT
 					{
 					prRule("N_ENTIREVAR", "N_VARIDENT");
-					$$.type = $1.type; 
-					$$.startIndex = $1.startIndex;
-					$$.endIndex = $1.endIndex;
-				 $$.baseType = $1.baseType;
+						$$.type = $1.type; 
+						$$.startIndex = $1.startIndex;
+						$$.endIndex = $1.endIndex;
+						$$.baseType = $1.baseType;
 					}
 				;
 N_EXPR          : N_SIMPLEEXPR
@@ -806,6 +809,10 @@ N_SIMPLEEXPR    : N_TERM N_ADDOPLST
 						$$.endIndex = $1.endIndex;
 						$$.baseType = $1.baseType;
 
+						if(oal.last_inst("la")) {
+							oal.push_back(Instruction("deref"));
+						}
+
 						// If constant, push const
 						if(is_var == false) {
 							if($1.type == CHAR) {
@@ -813,7 +820,7 @@ N_SIMPLEEXPR    : N_TERM N_ADDOPLST
 							} else {
 								oal.push_back(Instruction("lc", temp));
 							}
-						} else {
+						} else { //hello
 							/*
 							oal.push_back(Instruction("la", oal.find_var(temp)));
 							oal.push_back(Instruction("deref"));
@@ -985,15 +992,8 @@ N_VARIDENT      : T_IDENT
 					oal.push_back(Instruction("la", oal.find_var(temp)));
 
 					// BOO
-
+					/*
 					if(is_var == false) {
-						/*
-							if($4.type == CHAR) {
-								oal.push_back(Instruction("lc", int(temp[0])));
-							} else {
-								oal.push_back(Instruction("lc", temp));
-							}
-							*/
 						} else {
 							oal.push_back(Instruction("la", oal.find_var(temp)));
 							oal.push_back(Instruction("deref"));
@@ -1002,6 +1002,7 @@ N_VARIDENT      : T_IDENT
 								oal.push_back(Instruction("neg"));
 							}
 						}
+					*/
 				}
 				;
 N_WHILE         : T_WHILE N_EXPR {

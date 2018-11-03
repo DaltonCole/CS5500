@@ -125,6 +125,10 @@ class Oal {
 		int find_var(string s) {
 			return var_to_addr[s];
 		}
+
+		bool last_inst(string s) {
+			return insts.back().opCode == s;
+		}
 };
 
 // Current label
