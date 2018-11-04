@@ -407,13 +407,25 @@ N_EXPR          : N_SIMPLEEXPR
 						$$.endIndex = $1.endIndex;
 						$$.baseType = $1.baseType;
 
+						deque<string> remember_relops;
+
 						//hello
 						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
 						while(comparator_stack.empty() == false) {
 							comparator = comparator_stack.back();
 							comparator_stack.pop_back();
-							oal.push_back(comparator);
-						}						
+							if(comparator == ".gt." || comparator == ".lt." || comparator == ".ne." 
+								|| comparator == ".eq." || comparator == ".ge." || comparator == ".le." ) {
+								remember_relops.push_back(comparator);
+							} else {
+								oal.push_back(comparator);
+							}
+						}
+
+						while(remember_relops.empty() == false) {
+							comparator_stack.push_back(remember_relops.back());
+							remember_relops.pop_back();
+						}				
 					}
 				| N_SIMPLEEXPR N_RELOP N_SIMPLEEXPR
 					{

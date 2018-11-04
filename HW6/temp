@@ -80,9 +80,9 @@ L.8:
   deref
   lc 1
   add
-  .gt.
   add
   deref
+  .gt.
   jf L.10
   js L.5
   jp L.11
