@@ -405,7 +405,15 @@ N_EXPR          : N_SIMPLEEXPR
 						$$.type = $1.type; 
 						$$.startIndex = $1.startIndex;
 						$$.endIndex = $1.endIndex;
-						$$.baseType = $1.baseType;						
+						$$.baseType = $1.baseType;
+
+						//hello
+						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
+						while(comparator_stack.empty() == false) {
+							comparator = comparator_stack.back();
+							comparator_stack.pop_back();
+							oal.push_back(comparator);
+						}						
 					}
 				| N_SIMPLEEXPR N_RELOP N_SIMPLEEXPR
 					{
@@ -439,6 +447,14 @@ N_EXPR          : N_SIMPLEEXPR
 						$$.startIndex = NOT_APPLICABLE;
 						$$.endIndex = NOT_APPLICABLE;
 						$$.baseType = NOT_APPLICABLE;
+
+						//hello
+						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
+						while(comparator_stack.empty() == false) {
+							comparator = comparator_stack.back();
+							comparator_stack.pop_back();
+							oal.push_back(comparator);
+						}
 					}
 				;
 N_FACTOR        : N_SIGN N_VARIABLE
@@ -849,13 +865,7 @@ N_SIMPLEEXPR    : N_TERM N_ADDOPLST
 						$$.endIndex = $1.endIndex;
 						$$.baseType = $1.baseType;
 
-						//hello
-						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
-						while(comparator_stack.empty() == false) {
-							comparator = comparator_stack.back();
-							comparator_stack.pop_back();
-							oal.push_back(comparator);
-						}
+						
 						/*
 						if(comparator_stack.empty() == false) {
 							comparator = comparator_stack.back();
