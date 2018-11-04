@@ -2,36 +2,42 @@
 L.0:
   bss 44
 L.2:
+  la
+  deref
+  la
+  deref
+  la
+  deref
+  la
+  deref
+  la
+  deref
+  la 42, 0
+  deref
+  la
+  deref
+  la
+  deref
+  la 1, 1
+  deref
 L.5:
   save 2, 0
   asp 1
-  la 1, 1
-  la
-  la 42, 0
-  deref
+  la 0, 2
+  la 19, 0
   add
-  deref
   st
-  la
-  la 42, 0
-  deref
+  la 19, 0
   add
-  la
-  la 42, 0
-  deref
+  la 19, 0
   lc 1
   add
   add
-  deref
   st
-  la
-  la 42, 0
-  deref
+  la 19, 0
   lc 1
   add
   add
-  la 1, 1
-  deref
   st
   la 2, 1
   lc 1
@@ -45,60 +51,39 @@ L.4:
   lc 1
   st
   la 1, 1
-  la 41, 0
-  deref
   st
 L.6:
-  la 1, 1
-  deref
   lc 1
   .gt.
-  la 2, 1
-  deref
   and
   jf L.7
   la 2, 1
   lc 0
   st
-  la 42, 0
+  la 0, 1
   lc 1
   st
 L.8:
-  la 42, 0
-  deref
-  la 1, 1
-  deref
   .lt.
   jf L.9
-  la
-  la 42, 0
-  deref
+  la 19, 0
   add
-  deref
-  la
-  la 42, 0
-  deref
+  la 19, 0
   lc 1
   add
   .gt.
   add
-  deref
   jf L.10
   js L.5
   jp L.11
 L.10:
 L.11:
-  la 42, 0
-  la 42, 0
-  deref
   lc 1
   add
   st
   jp L.8
 L.9:
   la 1, 1
-  la 1, 1
-  deref
   lc 1
   sub
   st
@@ -106,68 +91,48 @@ L.9:
 L.7:
   asp -3
   ji
+  la 42, 0
+  deref
+  la
+  deref
+  la
+  deref
+  la
+  deref
 L.12:
   save 1, 0
   asp 4
-  la 42, 0
+  la 0, 1
   lc 1
   st
   la 1, 1
-  la 41, 0
-  deref
   st
   la 3, 1
   lc 0
   st
 L.13:
-  la 42, 0
-  deref
-  la 1, 1
-  deref
   .le.
-  la 3, 1
-  deref
   not
   and
   jf L.14
   la 2, 1
-  la 42, 0
-  deref
-  la 1, 1
-  deref
   add
   lc 2
   div
   st
-  la
-  la 2, 1
-  deref
+  la 19, 0
   add
-  deref
-  la 40, 0
-  deref
   .gt.
   jf L.15
-  la 1, 1
-  la 2, 1
-  deref
   lc 1
   sub
   st
   jp L.16
 L.15:
-  la
-  la 2, 1
-  deref
+  la 19, 0
   add
-  deref
-  la 40, 0
-  deref
   .lt.
   jf L.17
-  la 42, 0
-  la 2, 1
-  deref
   lc 1
   add
   st
@@ -180,12 +145,8 @@ L.18:
 L.16:
   jp L.13
 L.14:
-  la 3, 1
-  deref
   jf L.19
   la 43, 0
-  la 2, 1
-  deref
   st
   jp L.20
 L.19:
@@ -207,28 +168,18 @@ L.3:
   iread
   st
 L.21:
-  la 40, 0
-  deref
   lc 0
   .ge.
-  la 41, 0
-  deref
+  and
   lc 20
   .lt.
-  and
   jf L.22
   la 41, 0
-  la 41, 0
-  deref
   lc 1
   add
   st
-  la
-  la 41, 0
-  deref
+  la 19, 0
   add
-  la 40, 0
-  deref
   st
   lc 62
   cwrite
@@ -248,23 +199,13 @@ L.22:
   lc 1
   st
 L.23:
-  la 42, 0
-  deref
-  la 41, 0
-  deref
   .le.
   jf L.24
-  la
-  la 42, 0
-  deref
+  la 19, 0
   add
-  deref
   iwrite
   lc 32
   cwrite
-  la 42, 0
-  la 42, 0
-  deref
   lc 1
   add
   st
@@ -282,14 +223,10 @@ L.24:
   iread
   st
 L.25:
-  la 40, 0
-  deref
   lc 0
   .ge.
   jf L.26
   js L.12
-  la 43, 0
-  deref
   lc 0
   .eq.
   jf L.27
@@ -319,8 +256,6 @@ L.25:
   cwrite
   lc 32
   cwrite
-  la 40, 0
-  deref
   iwrite
   lc 92
   cwrite
@@ -338,8 +273,6 @@ L.27:
   cwrite
   lc 91
   cwrite
-  la 43, 0
-  deref
   iwrite
   lc 93
   cwrite
@@ -349,8 +282,6 @@ L.27:
   cwrite
   lc 32
   cwrite
-  la 40, 0
-  deref
   iwrite
   lc 92
   cwrite

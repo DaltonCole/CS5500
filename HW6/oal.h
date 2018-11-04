@@ -14,14 +14,14 @@ struct Instruction {
 
 	Instruction() {
 		opCode = "";
-		addr = -1;
+		addr = -999999;
 		jump_addr = "";
 		la_level = 0;
 	}
 
 	Instruction(string op) {
 		opCode = op;
-		addr = -1;
+		addr = -999999;
 		jump_addr = "";
 		la_level = 0;
 	}
@@ -35,7 +35,7 @@ struct Instruction {
 
 	Instruction(string op, string jump_address) {
 		opCode = op;
-		addr = -1;
+		addr = -999999;
 		jump_addr = jump_address;
 		la_level = 0;
 	}
@@ -54,9 +54,9 @@ struct Instruction {
 			opCode += ":";
 		}
 
-		if(addr == -1 && jump_addr == "") {
+		if(addr == -999999 && jump_addr == "") {
 			return opCode;
-		} else if(addr == -1) {
+		} else if(addr == -999999) {
 			return opCode + " " + jump_addr;
 		} else {
 			if(opCode == "  la" || opCode == "  save" || opCode == "  push" || opCode == "  pop") {
@@ -171,13 +171,11 @@ class Oal {
 		}
 
 		void la(string var) {
-			int level = find_level(var);
-			push_back(Instruction("la", find_var(var), level));
+			push_back(Instruction("la", find_var(var), find_level(var)));
 		}
 
 		int find_level(string var) {
-			int level = -1;
-			for(int i = 0; i < var_to_addr.size(); i++) {
+			for(int i = var_to_addr.size() - 1; i >= 0; i--) {
 				if(var_to_addr[i].find(var) != var_to_addr[i].end()) {
 					return i;
 				}
@@ -248,8 +246,13 @@ class Oal {
 
 
 		void add_addr(string var, int lower_bound, int upper_bound) {
+			/*
 			var_to_addr.back()[var] = addr.back() - (1 + upper_bound - lower_bound) - 1;
 			addr.back() += (upper_bound - lower_bound + 1); // ??
+			*/
+
+			var_to_addr.back()[var] = addr.back() - lower_bound;
+			addr.back() += (upper_bound - lower_bound + 1);
 		}
 
 		bool var_exists(string var) {
@@ -259,9 +262,9 @@ class Oal {
 			return false;
 		}
 		int find_var(string s) {
-			for(auto v : var_to_addr) {
-				if(v.find(s) != v.end()) {
-					return v[s];
+			for(int i = var_to_addr.size() - 1; i >= 0; i--) {
+				if(var_to_addr[i].find(s) != var_to_addr[i].end()) {
+					return var_to_addr[i][s];
 				}
 			}
 			return -999999;
@@ -303,7 +306,7 @@ class Oal {
 				}
 				
 				push_back(Instruction("js", find_proc(ident)));
-				
+
 				for(int i = level + 1; i < var_to_addr.size(); i++) {
 					push_back(Instruction("pop", i));
 				}

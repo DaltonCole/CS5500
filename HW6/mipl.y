@@ -39,8 +39,7 @@ bool is_var = false;
 string assigned_variable;
 bool negative = false;
 string comparator;
-bool negation = false; // For "not"
-stack<string> comparator_stack;
+deque<string> comparator_stack;
 stack<string> else_stack;
 stack<string> all_done_stack;
 stack<string> label_stack; // Used to match Dr. Leopold's output
@@ -406,14 +405,7 @@ N_EXPR          : N_SIMPLEEXPR
 						$$.type = $1.type; 
 						$$.startIndex = $1.startIndex;
 						$$.endIndex = $1.endIndex;
-						$$.baseType = $1.baseType;
-
-						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
-						while(comparator_stack.empty() == false) {
-							comparator = comparator_stack.top();
-							comparator_stack.pop();
-							oal.push_back(comparator);
-						}
+						$$.baseType = $1.baseType;						
 					}
 				| N_SIMPLEEXPR N_RELOP N_SIMPLEEXPR
 					{
@@ -447,13 +439,6 @@ N_EXPR          : N_SIMPLEEXPR
 						$$.startIndex = NOT_APPLICABLE;
 						$$.endIndex = NOT_APPLICABLE;
 						$$.baseType = NOT_APPLICABLE;
-
-						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
-						while(comparator_stack.empty() == false) {
-							comparator = comparator_stack.top();
-							comparator_stack.pop();
-							oal.push_back(comparator);
-						}
 					}
 				;
 N_FACTOR        : N_SIGN N_VARIABLE
@@ -467,8 +452,6 @@ N_FACTOR        : N_SIGN N_VARIABLE
 						$$.startIndex = $2.startIndex;
 						$$.endIndex = $2.endIndex;
 						$$.baseType = $2.baseType;
-
-						negation = false;
 
 						if(handled_in_array == false) {
 							oal.la(temp);
@@ -486,8 +469,6 @@ N_FACTOR        : N_SIGN N_VARIABLE
 						$$.startIndex = $1.startIndex;
 						$$.endIndex = $1.endIndex;
 						$$.baseType = $1.baseType;
-
-						negation = false;
 					}
 				| T_LPAREN N_EXPR T_RPAREN // N_expr taken care of
 					{
@@ -497,8 +478,6 @@ N_FACTOR        : N_SIGN N_VARIABLE
 						$$.startIndex = $2.startIndex;
 						$$.endIndex = $2.endIndex;
 						$$.baseType = $2.baseType;
-
-						negation = false;
 					}
 				| T_NOT N_FACTOR
 					{
@@ -647,13 +626,7 @@ N_MULTOPLST     : /* epsilon */
 					{
 					prRule("N_MULTOPLST", "epsilon");
 					}
-				| N_MULTOP N_FACTOR {
-					/*
-					if(comparator == "and")  {
-						oal.push_back(Instruction("and"));
-					}
-					*/
-				} N_MULTOPLST
+				| N_MULTOP N_FACTOR N_MULTOPLST
 					{
 					prRule("N_MULTOPLST", "N_MULTOP N_FACTOR N_MULTOPLST");
 
@@ -795,32 +768,32 @@ N_READ          : T_READ T_LPAREN N_INPUTVAR N_INPUTLST T_RPAREN
 N_RELOP         : T_LT
 					{
 					prRule("N_RELOP", "T_LT");
-						comparator_stack.push(".lt.");
+						comparator_stack.push_back(".lt.");
 					}
 				| T_GT
 					{
 					prRule("N_RELOP", "T_GT");
-						comparator_stack.push(".gt.");
+						comparator_stack.push_back(".gt.");
 					}
 				| T_LE
 					{
 					prRule("N_RELOP", "T_LE");
-						comparator_stack.push(".le.");
+						comparator_stack.push_back(".le.");
 					}
 				| T_GE
 					{
 					prRule("N_RELOP", "T_GE");
-						comparator_stack.push(".ge.");
+						comparator_stack.push_back(".ge.");
 					}
 				| T_EQ
 					{
 					prRule("N_RELOP", "T_EQ");
-						comparator_stack.push(".eq.");
+						comparator_stack.push_back(".eq.");
 					}
 				| T_NE
 					{
 					prRule("N_RELOP", "T_NE");
-						comparator_stack.push(".ne.");
+						comparator_stack.push_back(".ne.");
 					}
 				;
 N_SIGN          : /* epsilon */
@@ -875,6 +848,22 @@ N_SIMPLEEXPR    : N_TERM N_ADDOPLST
 						$$.startIndex = $1.startIndex;
 						$$.endIndex = $1.endIndex;
 						$$.baseType = $1.baseType;
+
+						//hello
+						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
+						while(comparator_stack.empty() == false) {
+							comparator = comparator_stack.back();
+							comparator_stack.pop_back();
+							oal.push_back(comparator);
+						}
+						/*
+						if(comparator_stack.empty() == false) {
+							comparator = comparator_stack.back();
+							comparator_stack.pop_back();
+							oal.push_back(comparator);
+						}
+						*/
+						
 					}
 				;
 N_STMT          : N_ASSIGN
@@ -1089,18 +1078,18 @@ N_ADDOP			: N_ADD_OP_LOGICAL
 N_ADD_OP_LOGICAL: T_OR
 					{
 						prRule("N_ADD_OP_LOGICAL", "T_OR");
-						comparator_stack.push("or");
+						comparator_stack.push_back("or");
 					}
 				;
 N_ADD_OP_ARITHMETIC: T_PLUS
 					{
 						prRule("N_ADD_OP_ARITHMETIC", "T_PLUS");
-						comparator_stack.push("add");
+						comparator_stack.push_back("add");
 					}
 				| T_MINUS
 					{
 						prRule("N_ADD_OP_ARITHMETIC", "T_MINUS");
-						comparator_stack.push("sub");
+						comparator_stack.push_back("sub");
 					}
 				;
 N_MULTOP		: N_MULT_OP_LOGICAL
@@ -1117,18 +1106,18 @@ N_MULTOP		: N_MULT_OP_LOGICAL
 N_MULT_OP_LOGICAL: T_AND
 					{
 						prRule("N_MULT_OP_LOGICAL", "T_AND");
-						comparator_stack.push("and");
+						comparator_stack.push_back("and");
 					}
 				;
 N_MULT_OP_ARITHMETIC: T_MULT
 					{
 						prRule("N_MULT_OP_ARITHMETIC", "T_MULT");
-						comparator_stack.push("mult");
+						comparator_stack.push_back("mult");
 					}
 				| T_DIV
 					{
 						prRule("N_MULT_OP_ARITHMETIC", "T_DIV");
-						comparator_stack.push("div");
+						comparator_stack.push_back("div");
 					}
 				;
 
