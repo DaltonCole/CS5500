@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 struct Instruction {
 	string opCode;
@@ -67,6 +68,54 @@ struct Instruction {
 	}
 };
 
+struct Proc_tree {
+	string proc_id;
+	int level;
+	vector<shared_ptr<Proc_tree> > children;
+	shared_ptr<Proc_tree> parent;
+
+	Proc_tree() {
+		proc_id = "";
+		level = 0;
+		parent = nullptr;
+	}
+
+	shared_ptr<Proc_tree> add_new_node_from_base(string name, int lv, shared_ptr<Proc_tree> par) {
+		if(level == lv - 1) {
+			shared_ptr<Proc_tree> left(new Proc_tree());
+			left -> proc_id = name;
+			left -> level = lv;
+			left -> parent = par;
+			children.push_back(left);
+			return left;
+		}
+		return children.back() -> add_new_node_from_base(name, lv, children.back());
+	}
+
+	bool check_current_level(string proc) {
+		for(auto i : children) {
+			if(i -> proc_id == proc) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	int find_level_difference(string proc) {
+		if(level == 0) {
+			return 0;
+		}
+		if(level != 0) {
+			for(auto i : parent -> children) {
+				if(i -> proc_id == proc) {
+					return level - 1;
+				}
+			}
+		}
+		return parent -> find_level_difference(proc);
+	}
+};
+
 class Oal {
 	public:
 		// Instruction list
@@ -81,6 +130,9 @@ class Oal {
 		unordered_map<string, string> var_to_proc;
 		// In proc or main
 		bool in_proc;
+		//
+		shared_ptr<Proc_tree> p_tree;
+		shared_ptr<Proc_tree> current_p_tree;
 
 		// Remember original addr size
 		int original_addr_size;
@@ -92,19 +144,18 @@ class Oal {
 			insts.push_back(Instruction());
 			var_to_addr.push_back(unordered_map<string, int>());
 			addr.push_back(20);
+			p_tree = shared_ptr<Proc_tree>(new Proc_tree());
+			current_p_tree = p_tree;
 		}
 
 		void begin_proc(string s) {
 			var_to_proc[s] = new_label();
 			in_proc = true;
-			/*
-			if(original_addr_size == 0) {
-				original_addr_size = addr;
-			}
-			*/
 			addr.push_back(0);
 			var_to_addr.push_back(unordered_map<string, int>());
 			var_to_addr.back()[s] = var_to_addr.size() - 1;
+
+			current_p_tree = p_tree -> add_new_node_from_base(s, addr.size() - 1, current_p_tree);
 		}
 		void end_proc() {
 			in_proc = false;
@@ -115,6 +166,8 @@ class Oal {
 			push_back(Instruction("ji"));
 			addr.pop_back(); // Rest addr
 			var_to_addr.pop_back();
+
+			current_p_tree = current_p_tree -> parent;
 		}
 
 		void la(string var) {
@@ -238,15 +291,20 @@ class Oal {
 
 			if(in_proc == false) {
 				push_back(Instruction("js", find_proc(ident)));
+			} else if(current_p_tree -> check_current_level(ident)) {
+				push_back(Instruction("js", find_proc(ident)));
 			} else {
-				int level = find_level(ident);
+				//int level = find_level(ident);
 
-				for(int i = var_to_addr.size() - 1; i >= level; i--) {
+				int level = current_p_tree -> find_level_difference(ident);
+
+				for(int i = var_to_addr.size() - 1; i > level; i--) {
 					push_back(Instruction("push", i));
 				}
 				
 				push_back(Instruction("js", find_proc(ident)));
-				for(int i = level; i < var_to_addr.size(); i++) {
+				
+				for(int i = level + 1; i < var_to_addr.size(); i++) {
 					push_back(Instruction("pop", i));
 				}
 			}
