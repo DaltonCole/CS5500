@@ -14,6 +14,7 @@
 #include <string>
 #include <ctype.h>
 #include <stack>
+#include <deque>
 #include <list>
 #include "SymbolTable.h"
 #include "oal.h"
@@ -39,6 +40,15 @@ string assigned_variable;
 bool negative = false;
 string comparator;
 bool negation = false; // For "not"
+stack<string> comparator_stack;
+stack<string> else_stack;
+stack<string> all_done_stack;
+stack<string> label_stack; // Used to match Dr. Leopold's output
+deque<string> while_deque;
+stack<string> array_var_stack;
+bool handled_in_array;
+int nesting_level = 0; // Proc nesting level
+stack<string> proc_stack;
 
 int yyerror(const char*);
 
@@ -152,11 +162,14 @@ N_ADDOP         : T_PLUS
 N_ADDOPLST      : /* epsilon */
 					{
 					prRule("N_ADDOPLST", "epsilon");
+					//comparator = ""; //might need as a divider
 					}
 				| N_ADDOP N_TERM N_ADDOPLST
 					{
 					prRule("N_ADDOPLST", 
 						   "N_ADDOP N_TERM N_ADDOPLST");
+
+
 					}
 				;
 N_ARRAY         : T_ARRAY T_LBRACK N_IDXRANGE T_RBRACK T_OF
@@ -173,17 +186,18 @@ N_ARRAY         : T_ARRAY T_LBRACK N_IDXRANGE T_RBRACK T_OF
 N_ARRAYVAR      : N_ENTIREVAR
 					{
 					prRule("N_ARRAYVAR", "N_ENTIREVAR");
-						$$.type = $1.type; 
-						$$.startIndex = $1.startIndex;
-						$$.endIndex = $1.endIndex;
-						$$.baseType = $1.baseType;
+				$$.type = $1.type; 
+					$$.startIndex = $1.startIndex;
+					$$.endIndex = $1.endIndex;
+				 $$.baseType = $1.baseType;
 					}
 				;
 N_ASSIGN        : N_VARIABLE {
-					assigned_variable = temp;
-
 					// Set assign oal
-					//oal.push_back(Instruction("la", oal.find_var(assigned_variable)));
+					if(handled_in_array == false) {
+						oal.la(temp);
+					}
+					handled_in_array = false;
 				} T_ASSIGN N_EXPR
 					{
 					prRule("N_ASSIGN", 
@@ -221,41 +235,32 @@ N_ASSIGN        : N_VARIABLE {
 							yyerror("Expression must be of same type as variable");
 						}
 
-						
-						if(oal.last_inst("la")) {
-							oal.push_back(Instruction("deref"));
-						}
-						/*
-						// If constant, push const
-						if(is_var == false) {
-							if($4.type == CHAR) {
-								oal.push_back(Instruction("lc", int(temp[0])));
-							} else {
-								oal.push_back(Instruction("lc", temp));
-							}
-						} else {
-							oal.push_back(Instruction("la", oal.find_var(temp)));
-							oal.push_back(Instruction("deref"));
-							// If negative
-							if(negative == true) {
-								oal.push_back(Instruction("neg"));
-							}
-						}
-						*/
-
 						oal.push_back(Instruction("st"));
 					}
 				;
-N_BLOCK         : 	{
+N_BLOCK         : 	N_VARDECPART N_PROCDECPART 
+					{
 						// Add label to block
-						oal.push_back(Instruction(Oal::new_label()));
-					}
-					N_VARDECPART N_PROCDECPART N_STMTPART
+						if(proc_stack.empty() == false) {
+							oal.push_back(Instruction(oal.get_proc(proc_stack.top())));
+							proc_stack.pop();
+							oal.push_back(Instruction("save", nesting_level));
+							oal.in_proc = true;
+						} else {
+							// Main
+							oal.push_back(Instruction("L.3"));
+							oal.in_proc = false;
+						}
+
+						// If in a procedure, perform asp
+						oal.add_asp();
+					} N_STMTPART
 					{
 					prRule("N_BLOCK", 
 						"N_VARDECPART N_PROCDECPART N_STMTPART");
 
-						
+						// If in a procedure, perform asp removal
+						oal.remove_asp();
 
 						endScope();
 					}
@@ -271,6 +276,8 @@ N_BOOLCONST     : T_TRUE
 						// Set temp
 						temp = "1";
 						is_var = false;
+
+						oal.push_back(Instruction("lc", 1));
 					}
 				| T_FALSE
 					{
@@ -283,6 +290,8 @@ N_BOOLCONST     : T_TRUE
 						// Set temp
 						temp = "0";
 						is_var = false;
+
+						oal.push_back(Instruction("lc", 0));
 					}
 				;
 N_COMPOUND      : T_BEGIN N_STMT N_STMTLST T_END
@@ -291,23 +300,57 @@ N_COMPOUND      : T_BEGIN N_STMT N_STMTLST T_END
 						   "T_BEGIN N_STMT N_STMTLST T_END");
 					}
 				;
-N_CONDITION     : T_IF N_EXPR T_THEN N_STMT
+N_CONDITION     : T_IF 
 					{
-					prRule("N_CONDITION", 
-						   "T_IF N_EXPR T_THEN N_STMT");
-
-					if($2.type != BOOL) {
-							yyerror("Expression must be of type boolean");
-						}
+						// Generate new labels for all done and else
+						string next_label = oal.new_label();
+						label_stack.push(oal.new_label());
+						label_stack.push(next_label);
 					}
-				| T_IF N_EXPR T_THEN N_STMT T_ELSE N_STMT
+					N_EXPR 
 					{
-					prRule("N_CONDITION",
-					  "T_IF N_EXPR T_THEN N_STMT T_ELSE N_STMT");
-
-					if($2.type != BOOL) {
+						if($3.type != BOOL) {
 							yyerror("Expression must be of type boolean");
 						}
+
+
+						// Add generated label to else stack
+						else_stack.push(label_stack.top());
+						// Jump to new label if false
+						oal.push_back(Instruction("jf", else_stack.top()));
+						// Remove label from label stack
+						label_stack.pop();
+					} 
+					N_THEN {
+						oal.push_back(Instruction(all_done_stack.top()));
+						all_done_stack.pop();
+					}
+				;
+N_THEN 			: T_THEN N_STMT 
+					{
+						all_done_stack.push(label_stack.top());
+						oal.push_back(Instruction("jp", all_done_stack.top()));
+						// Remove label from label stack
+						label_stack.pop();
+
+						oal.push_back(Instruction(else_stack.top()));
+						else_stack.pop();
+					}
+				|  T_THEN N_STMT N_ELSE
+				;
+N_ELSE			: T_ELSE 
+					{
+						all_done_stack.push(label_stack.top());
+						oal.push_back(Instruction("jp", all_done_stack.top()));
+						// Remove label from label stack
+						label_stack.pop();
+
+						oal.push_back(Instruction(else_stack.top()));
+						else_stack.pop();
+					} 
+					N_STMT 
+					{
+
 					}
 				;
 N_CONST         : N_INTCONST
@@ -321,6 +364,8 @@ N_CONST         : N_INTCONST
 						// Keep track of var and type
 						temp = to_string($1);
 						is_var = false;
+
+						oal.push_back(Instruction("lc", temp));
 					}
 				| T_CHARCONST
 					{
@@ -331,8 +376,11 @@ N_CONST         : N_INTCONST
 				 		$$.baseType = NOT_APPLICABLE;
 
 				 		// Keep track of var and type
-				 		temp = string(1, $1);
+				 		temp = to_string(int($1));
+				 		//temp = string(1, $1);
 				 		is_var = false;
+
+				 		oal.push_back(Instruction("lc", temp));
 					}
 				| N_BOOLCONST
 					{
@@ -346,10 +394,10 @@ N_CONST         : N_INTCONST
 N_ENTIREVAR     : N_VARIDENT
 					{
 					prRule("N_ENTIREVAR", "N_VARIDENT");
-						$$.type = $1.type; 
-						$$.startIndex = $1.startIndex;
-						$$.endIndex = $1.endIndex;
-						$$.baseType = $1.baseType;
+					$$.type = $1.type; 
+					$$.startIndex = $1.startIndex;
+					$$.endIndex = $1.endIndex;
+				 $$.baseType = $1.baseType;
 					}
 				;
 N_EXPR          : N_SIMPLEEXPR
@@ -359,6 +407,13 @@ N_EXPR          : N_SIMPLEEXPR
 						$$.startIndex = $1.startIndex;
 						$$.endIndex = $1.endIndex;
 						$$.baseType = $1.baseType;
+
+						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
+						while(comparator_stack.empty() == false) {
+							comparator = comparator_stack.top();
+							comparator_stack.pop();
+							oal.push_back(comparator);
+						}
 					}
 				| N_SIMPLEEXPR N_RELOP N_SIMPLEEXPR
 					{
@@ -393,19 +448,11 @@ N_EXPR          : N_SIMPLEEXPR
 						$$.endIndex = NOT_APPLICABLE;
 						$$.baseType = NOT_APPLICABLE;
 
-						// <, >, etc.
-						if(comparator == ">") {
-							oal.push_back(Instruction(".gt."));
-						} else if(comparator == "<") {
-							oal.push_back(Instruction(".lt."));
-						} else if(comparator == ">=") {
-							oal.push_back(Instruction(".ge."));
-						} else if(comparator == "<=") {
-							oal.push_back(Instruction(".le."));
-						} else if(comparator == "==") {
-							oal.push_back(Instruction(".eq."));
-						} else if(comparator == "!=") {
-							oal.push_back(Instruction(".nq."));
+						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
+						while(comparator_stack.empty() == false) {
+							comparator = comparator_stack.top();
+							comparator_stack.pop();
+							oal.push_back(comparator);
 						}
 					}
 				;
@@ -422,6 +469,15 @@ N_FACTOR        : N_SIGN N_VARIABLE
 						$$.baseType = $2.baseType;
 
 						negation = false;
+
+						if(handled_in_array == false) {
+							oal.la(temp);
+						}
+						handled_in_array = false;
+						oal.push_back(Instruction("deref"));
+						if(negative == true) {
+							oal.push_back(Instruction("neg"));
+						}
 					}
 				| N_CONST
 					{
@@ -433,7 +489,7 @@ N_FACTOR        : N_SIGN N_VARIABLE
 
 						negation = false;
 					}
-				| T_LPAREN N_EXPR T_RPAREN
+				| T_LPAREN N_EXPR T_RPAREN // N_expr taken care of
 					{
 					prRule("N_FACTOR", 
 						  "T_LPAREN N_EXPR T_RPAREN");
@@ -457,8 +513,7 @@ N_FACTOR        : N_SIGN N_VARIABLE
 						$$.endIndex = NOT_APPLICABLE;
 						$$.baseType = NOT_APPLICABLE;
 
-						negation = true;
-						cout << "blah" << endl;
+						oal.push_back(Instruction("not"));
 					}
 				;
 N_IDENT         : T_IDENT
@@ -498,19 +553,24 @@ N_IDXRANGE      : N_IDX T_DOTDOT N_IDX
 						$$.baseType = NOT_APPLICABLE;
 					}
 				;
-N_IDXVAR        : N_ARRAYVAR T_LBRACK N_EXPR T_RBRACK
+N_IDXVAR        : N_ARRAYVAR 
+					{
+						array_var_stack.push(temp);
+						oal.la(temp);
+					} 
+					T_LBRACK N_EXPR T_RBRACK
 					{
 					prRule("N_IDXVAR", 
 						  "N_ARRAYVAR T_LBRACK N_EXPR T_RBRACK");
 
 						// N_expr cannot be a proceduce
-						if($3.type == PROCEDURE || $1.type == PROCEDURE) {
+						if($4.type == PROCEDURE || $1.type == PROCEDURE) {
 							yyerror("Procedure/variable mismatch");
 						}
 
-						if($3.type != INT) {
+						if($4.type != INT) {
 							// Allow nested arrays
-							if(!($3.type == ARRAY && $3.entireVar == false && $3.baseType == INT)) {
+							if(!($4.type == ARRAY && $4.entireVar == false && $4.baseType == INT)) {
 								yyerror("Index expression must be of type integer");
 							}
 						}
@@ -518,6 +578,9 @@ N_IDXVAR        : N_ARRAYVAR T_LBRACK N_EXPR T_RBRACK
 						if($1.type != ARRAY) {
 							yyerror("Indexed variable must be of array type");
 						}
+
+						oal.push_back(Instruction("add"));
+						handled_in_array = true;
 					}
 				;
 N_INPUTLST      : /* epsilon */
@@ -550,7 +613,7 @@ N_INPUTVAR      : N_VARIABLE
 						$$.entireVar = $1.entireVar;
 
 						// Read input
-						oal.push_back(Instruction("la", oal.find_var(temp)));
+						oal.la(temp);
 						if($1.type == INT) {
 							oal.push_back(Instruction("iread"));
 						} else {
@@ -584,15 +647,12 @@ N_MULTOPLST     : /* epsilon */
 					{
 					prRule("N_MULTOPLST", "epsilon");
 					}
-				| N_MULTOP N_FACTOR 
-				{
-					cout << comparator << endl;
-					cout << temp << endl;
-
-					if(negation == true) {
-						cout << "NNOOOOOTTT" << endl;
-						oal.push_back(Instruction("not"));
+				| N_MULTOP N_FACTOR {
+					/*
+					if(comparator == "and")  {
+						oal.push_back(Instruction("and"));
 					}
+					*/
 				} N_MULTOPLST
 					{
 					prRule("N_MULTOPLST", "N_MULTOP N_FACTOR N_MULTOPLST");
@@ -620,7 +680,7 @@ N_OUTPUT        : N_EXPR
 						}
 
 						// Write
-						if($1.type == INT)  {
+						if($1.type == INT || ($1.type == ARRAY && $1.baseType == INT))  {
 							oal.push_back(Instruction("iwrite"));
 						} else {
 							oal.push_back(Instruction("cwrite"));
@@ -643,25 +703,29 @@ N_OUTPUTLST     : /* epsilon */
 				;
 N_PROCDEC       : N_PROCHDR N_BLOCK
 					{
-					prRule("N_PROCDEC", "N_PROCHDR N_BLOCK");
+						prRule("N_PROCDEC", "N_PROCHDR N_BLOCK");
+						oal.end_proc();
+						nesting_level--;
 					}
 				;
 N_PROCHDR       : T_PROC T_IDENT T_SCOLON
 					{
-					prRule("N_PROCHDR", 
-						   "T_PROC T_IDENT T_SCOLON");
-				string lexeme = string($2);
-				TYPE_INFO info = {PROCEDURE, NOT_APPLICABLE,
-						   NOT_APPLICABLE, NOT_APPLICABLE};
-				prSymbolTableAddition(lexeme, info);
-					bool success = scopeStack.top().addEntry
-							   (SYMBOL_TABLE_ENTRY(lexeme,info));
-						if (! success) {
-					  yyerror("Multiply defined identifier");
-					  return(0);
-					}
+						prRule("N_PROCHDR", "T_PROC T_IDENT T_SCOLON");
+						string lexeme = string($2);
+						TYPE_INFO info = {PROCEDURE, NOT_APPLICABLE, NOT_APPLICABLE, NOT_APPLICABLE};
+						prSymbolTableAddition(lexeme, info);
+						bool success = scopeStack.top().addEntry(SYMBOL_TABLE_ENTRY(lexeme,info));
+						if(! success) {
+							yyerror("Multiply defined identifier");
+						return(0);
+						}
 
-				beginScope();
+						beginScope();
+						nesting_level++;
+
+						// Put us in proc
+						oal.begin_proc(string($2));
+						proc_stack.push(string($2));
 					}
 				;
 N_PROCDECPART   : /* epsilon */
@@ -677,17 +741,20 @@ N_PROCDECPART   : /* epsilon */
 N_PROCIDENT     : T_IDENT
 					{
 					prRule("N_PROCIDENT", "T_IDENT");
-				string ident = string($1);
+						string ident = string($1);
 						TYPE_INFO typeInfo = 
 						findEntryInAnyScope(ident);
 						if (typeInfo.type == UNDEFINED) {
 						  yyerror("Undefined identifier");
 						  return(0);
-					}
-				$$.type = typeInfo.type;
-				$$.startIndex = typeInfo.startIndex;
-				$$.endIndex = typeInfo.endIndex;
-				$$.baseType = typeInfo.baseType;
+						}
+						$$.type = typeInfo.type;
+						$$.startIndex = typeInfo.startIndex;
+						$$.endIndex = typeInfo.endIndex;
+						$$.baseType = typeInfo.baseType;
+
+						// Jump to proc
+						oal.js(ident);
 					}
 				;
 N_PROCSTMT      : N_PROCIDENT
@@ -728,32 +795,32 @@ N_READ          : T_READ T_LPAREN N_INPUTVAR N_INPUTLST T_RPAREN
 N_RELOP         : T_LT
 					{
 					prRule("N_RELOP", "T_LT");
-						comparator = "<";
+						comparator_stack.push(".lt.");
 					}
 				| T_GT
 					{
 					prRule("N_RELOP", "T_GT");
-						comparator = ">";
+						comparator_stack.push(".gt.");
 					}
 				| T_LE
 					{
 					prRule("N_RELOP", "T_LE");
-						comparator = "<=";
+						comparator_stack.push(".le.");
 					}
 				| T_GE
 					{
 					prRule("N_RELOP", "T_GE");
-						comparator = ">=";
+						comparator_stack.push(".ge.");
 					}
 				| T_EQ
 					{
 					prRule("N_RELOP", "T_EQ");
-						comparator = "==";
+						comparator_stack.push(".eq.");
 					}
 				| T_NE
 					{
 					prRule("N_RELOP", "T_NE");
-						comparator = "!=";
+						comparator_stack.push(".ne.");
 					}
 				;
 N_SIGN          : /* epsilon */
@@ -765,7 +832,7 @@ N_SIGN          : /* epsilon */
 				| T_PLUS
 					{
 					prRule("N_SIGN", "T_PLUS");
-				$$ = POSITIVE;
+						$$ = POSITIVE;
 						negative = false;
 					}
 				| T_MINUS
@@ -808,28 +875,6 @@ N_SIMPLEEXPR    : N_TERM N_ADDOPLST
 						$$.startIndex = $1.startIndex;
 						$$.endIndex = $1.endIndex;
 						$$.baseType = $1.baseType;
-
-						if(oal.last_inst("la")) {
-							oal.push_back(Instruction("deref"));
-						}
-
-						// If constant, push const
-						if(is_var == false) {
-							if($1.type == CHAR) {
-								oal.push_back(Instruction("lc", int(temp[0])));
-							} else {
-								oal.push_back(Instruction("lc", temp));
-							}
-						} else { //hello
-							/*
-							oal.push_back(Instruction("la", oal.find_var(temp)));
-							oal.push_back(Instruction("deref"));
-							// If negative
-							if(negative == true) {
-								oal.push_back(Instruction("neg"));
-							}
-							*/
-						}
 					}
 				;
 N_STMT          : N_ASSIGN
@@ -924,7 +969,12 @@ N_VARDEC        : N_IDENT N_IDENTLST T_COLON N_TYPE
 						// Add each variable to oal
 						for(auto varN : variableNames) {
 							if(oal.var_exists(varN) == false) {
-								oal.add_addr(varN);
+								TYPE_INFO info = findEntryInAnyScope(varN);
+								if(info.type != ARRAY) {
+									oal.add_addr(varN);
+								} else {
+									oal.add_addr(varN, info.startIndex, info.endIndex);
+								}
 							}
 						}
 						
@@ -988,32 +1038,34 @@ N_VARIDENT      : T_IDENT
 					// Keep track of var and type
 					temp = ident;
 					is_var = true;
-
-					oal.push_back(Instruction("la", oal.find_var(temp)));
-
-					// BOO
-					/*
-					if(is_var == false) {
-						} else {
-							oal.push_back(Instruction("la", oal.find_var(temp)));
-							oal.push_back(Instruction("deref"));
-							// If negative
-							if(negative == true) {
-								oal.push_back(Instruction("neg"));
-							}
-						}
-					*/
 				}
 				;
-N_WHILE         : T_WHILE N_EXPR {
-						if($2.type != BOOL) {
+N_WHILE         : T_WHILE 
+					{
+						// Label, jp
+						while_deque.push_back(oal.new_label());
+						// jf, label
+						while_deque.push_back(oal.new_label());
+
+						// First label
+						oal.push_back(Instruction(while_deque[while_deque.size() - 2]));
+					}
+					N_EXPR {
+						if($3.type != BOOL) {
 							yyerror("Expression must be of type boolean");
 						}
+						
+						oal.push_back(Instruction("jf", while_deque.back()));
 					} 
 					T_DO N_STMT
 					{
 					prRule("N_WHILE", 
 						   "T_WHILE N_EXPR T_DO N_STMT");
+
+						oal.push_back(Instruction("jp", while_deque[while_deque.size() - 2]));
+						oal.push_back(Instruction(while_deque.back()));
+						while_deque.pop_back();
+						while_deque.pop_back();
 					}
 				;
 N_WRITE         : T_WRITE T_LPAREN N_OUTPUT N_OUTPUTLST T_RPAREN
@@ -1037,15 +1089,18 @@ N_ADDOP			: N_ADD_OP_LOGICAL
 N_ADD_OP_LOGICAL: T_OR
 					{
 						prRule("N_ADD_OP_LOGICAL", "T_OR");
+						comparator_stack.push("or");
 					}
 				;
 N_ADD_OP_ARITHMETIC: T_PLUS
 					{
 						prRule("N_ADD_OP_ARITHMETIC", "T_PLUS");
+						comparator_stack.push("add");
 					}
 				| T_MINUS
 					{
 						prRule("N_ADD_OP_ARITHMETIC", "T_MINUS");
+						comparator_stack.push("sub");
 					}
 				;
 N_MULTOP		: N_MULT_OP_LOGICAL
@@ -1062,16 +1117,18 @@ N_MULTOP		: N_MULT_OP_LOGICAL
 N_MULT_OP_LOGICAL: T_AND
 					{
 						prRule("N_MULT_OP_LOGICAL", "T_AND");
-						comparator = "and";
+						comparator_stack.push("and");
 					}
 				;
 N_MULT_OP_ARITHMETIC: T_MULT
 					{
 						prRule("N_MULT_OP_ARITHMETIC", "T_MULT");
+						comparator_stack.push("mult");
 					}
 				| T_DIV
 					{
 						prRule("N_MULT_OP_ARITHMETIC", "T_DIV");
+						comparator_stack.push("div");
 					}
 				;
 
