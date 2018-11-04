@@ -135,40 +135,20 @@ list<string> variableNames;		  // list of declared variables
 N_START         : N_PROG
 					{
 						prRule("N_START", "N_PROG");
-						//printf("\n---- Completed parsing ----\n\n");
-
 						// Add halt instruciton at end of main
 						oal.push_back(Instruction("halt"));
 
 						return 0;
 					}
 				;
-/*
-N_ADDOP         : T_PLUS
-					{
-					prRule("N_ADDOP", "T_PLUS");
-					}
-				| T_MINUS
-					{
-					prRule("N_ADDOP", "T_MINUS");
-					}
-				| T_OR
-					{
-					prRule("N_ADDOP", "T_OR");
-					}
-				;
-*/
 N_ADDOPLST      : /* epsilon */
 					{
 					prRule("N_ADDOPLST", "epsilon");
-					//comparator = ""; //might need as a divider
 					}
 				| N_ADDOP N_TERM N_ADDOPLST
 					{
 					prRule("N_ADDOPLST", 
 						   "N_ADDOP N_TERM N_ADDOPLST");
-
-
 					}
 				;
 N_ARRAY         : T_ARRAY T_LBRACK N_IDXRANGE T_RBRACK T_OF
@@ -376,7 +356,6 @@ N_CONST         : N_INTCONST
 
 				 		// Keep track of var and type
 				 		temp = to_string(int($1));
-				 		//temp = string(1, $1);
 				 		is_var = false;
 
 				 		oal.push_back(Instruction("lc", temp));
@@ -409,8 +388,7 @@ N_EXPR          : N_SIMPLEEXPR
 
 						deque<string> remember_relops;
 
-						//hello
-						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
+						// add, sub, mult, div, and, or
 						while(comparator_stack.empty() == false) {
 							comparator = comparator_stack.back();
 							comparator_stack.pop_back();
@@ -460,7 +438,6 @@ N_EXPR          : N_SIMPLEEXPR
 						$$.endIndex = NOT_APPLICABLE;
 						$$.baseType = NOT_APPLICABLE;
 
-						//hello
 						// add, sub, mult, div, and, or, .eq., .ne., .lt., .le., .gt., .ge.
 						while(comparator_stack.empty() == false) {
 							comparator = comparator_stack.back();
@@ -635,21 +612,6 @@ N_INTCONST      : N_SIGN T_INTCONST
 				$$ = $1 * $2;
 					}
 				;
-/*
-N_MULTOP        : T_MULT
-					{
-					prRule("N_MULTOP", "T_MULT");
-					}
-				| T_DIV
-					{
-					prRule("N_MULTOP", "T_DIV");
-					}
-				| T_AND
-					{
-					prRule("N_MULTOP", "T_AND");
-					}
-				;
-*/
 N_MULTOPLST     : /* epsilon */
 					{
 					prRule("N_MULTOPLST", "epsilon");
@@ -876,16 +838,6 @@ N_SIMPLEEXPR    : N_TERM N_ADDOPLST
 						$$.startIndex = $1.startIndex;
 						$$.endIndex = $1.endIndex;
 						$$.baseType = $1.baseType;
-
-						
-						/*
-						if(comparator_stack.empty() == false) {
-							comparator = comparator_stack.back();
-							comparator_stack.pop_back();
-							oal.push_back(comparator);
-						}
-						*/
-						
 					}
 				;
 N_STMT          : N_ASSIGN

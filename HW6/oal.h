@@ -164,7 +164,7 @@ class Oal {
 			}
 			proc.clear();
 			push_back(Instruction("ji"));
-			addr.pop_back(); // Rest addr
+			addr.pop_back(); // Reset addr
 			var_to_addr.pop_back();
 
 			current_p_tree = current_p_tree -> parent;
@@ -194,14 +194,6 @@ class Oal {
 		string get_proc(string s) {
 			return var_to_proc[s];
 		}
-
-		/*
-		void pop_back() {
-			if(insts.size() > 1) {
-				insts.pop_back();
-			}
-		}
-		*/
 
 		void make_header() {
 			//   init L.0, 20, L.1, L.2, L.3
@@ -246,11 +238,6 @@ class Oal {
 
 
 		void add_addr(string var, int lower_bound, int upper_bound) {
-			/*
-			var_to_addr.back()[var] = addr.back() - (1 + upper_bound - lower_bound) - 1;
-			addr.back() += (upper_bound - lower_bound + 1); // ??
-			*/
-
 			var_to_addr.back()[var] = addr.back() - lower_bound;
 			addr.back() += (upper_bound - lower_bound + 1);
 		}
@@ -297,8 +284,6 @@ class Oal {
 			} else if(current_p_tree -> check_current_level(ident)) {
 				push_back(Instruction("js", find_proc(ident)));
 			} else {
-				//int level = find_level(ident);
-
 				int level = current_p_tree -> find_level_difference(ident);
 
 				for(int i = var_to_addr.size() - 1; i > level; i--) {
@@ -313,12 +298,6 @@ class Oal {
 			}
 
 		}
-
-		/*
-		bool last_inst(string s) {
-			return insts.back().opCode == s;
-		}
-		*/
 };
 
 // Current label
